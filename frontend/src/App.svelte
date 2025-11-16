@@ -9,9 +9,9 @@
      import Home from './routes/Home.svelte';
 
      let current;
-     
+
      page('/', () => $token ? page('/dashboard') : current = Home);
-     
+
      page('/register', () => $token ? page('/dashboard') : current = Register);
      page('/dashboard', () => current = Dashboard);
      page('/upload', () => current = Upload);

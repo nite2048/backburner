@@ -1,77 +1,79 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import multer from 'multer';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
-
-const UPLOAD_DIR = path.join(dirname, 'uploads');
+const UPLOAD_DIR = path.join(dirname, "uploads");
 
 if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+     console.log(`Created directory ${UPLOAD_DIR}`);
 }
 
-const storage = multer.diskStorage({
-     destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-     filename: (req, file, cb) => {
-          const original = path.basename(file.originalname || 'file');
-          const safe = original.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-          const filename = `${Date.now()}-${safe}`;
-          cb(null, filename);
+export function saveBase64Image(filename, data) {
+     if (!filename || !data) throw new Error("Missing filename or data");
+
+     const match = data.match(/^data:(.+);base64,(.+)$/);
+     if (!match) throw new Error("Invalid base64 data");
+
+     const mime = match[1];
+     const base64 = match[2];
+     const buffer = Buffer.from(base64, "base64");
+     const filePath = path.join(UPLOAD_DIR, filename);
+
+     fs.writeFileSync(filePath, buffer);
+
+     return { filename, path: filePath, size: buffer.length, mime };
+}
+
+export function saveBase64String(filename, data) {
+     if (!filename || !data) throw new Error("Missing filename or data");
+
+     const match = data.match(/^data:(.+);base64,(.+)$/);
+     if (!match) throw new Error("Invalid base64 data");
+
+     // const mime = match[1];
+     const base64 = match[2];
+
+     return {filename : filename, base64 : base64};
+}
+
+export function listFiles() {
+     return fs.readdirSync(UPLOAD_DIR);
+}
+
+export function getFilePath(name) {
+     const safe = path.basename(name);
+     const filePath = path.join(UPLOAD_DIR, safe);
+
+     if (!fs.existsSync(filePath)) {
+          throw new Error("File not found");
      }
-});
 
-function fileFilter(req, file, cb) {
-     if (file && file.mimetype && file.mimetype.startsWith('image/')) {
-          cb(null, true);
-     } else {
-          cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Only image files are allowed'));
+     return filePath;
+}
+
+export function deleteFile(filePath) {
+     try {
+          fs.unlinkSync(filePath);
+     } catch (error) {
+          throw new Error(`Error deleting file: ${error.message}`);
      }
 }
 
-const upload = multer({
-     storage,
-     fileFilter,
-     limits: {
-     fileSize: 10 * 1024 * 1024, // 10 MB
-     files: 1
-     }
-});
+export function getMostRecentFile() {
+     const files = fs.readdirSync(UPLOAD_DIR);
+     if (files.length === 0) return null;
 
-export async function handleUpload(req, res){
-     upload.single('image')(req, res, (err) => {
-       if (err) {
-          if (err instanceof multer.MulterError) {
-               let msg = err.message;
-               if (err.code === 'LIMIT_FILE_SIZE') msg = 'File is too large (max 10MB).';
-               if (err.code === 'LIMIT_UNEXPECTED_FILE') msg = 'Invalid file type or field.';
-               return res.status(400).json({ message: msg }) //Multer Specific Error
-          }
-          return res.status(500).json({ message: 'Upload failed', error: err.message });
-       }
+     const sorted = files
+       .map(file => ({
+         name: file,
+         time: fs.statSync(path.join(UPLOAD_DIR, file)).mtime.getTime()
+       }))
+       .sort((a, b) => b.time - a.time);
 
-       if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-       // return res.json({ message: 'Upload successful', filename: req.file.filename });
-     });
+     return path.join(UPLOAD_DIR, sorted[0].name);
 }
 
-export function readDir(req, res){
-     fs.readdir(UPLOAD_DIR, (err, files) => {
-       if (err) return res.status(500).json({ message: 'Could not list uploads' });
-       res.json({ files });
-     });
-}
-
-export function downloadFile(req, res){
-     const name = path.basename(req.params.filename);
-     const filePath = path.join(UPLOAD_DIR, name);
-
-     fs.stat(filePath, (err, stats) => {
-          if (err || !stats.isFile()) return res.status(404).json({ message: 'File not found' });
-
-          res.download(filePath, name, (downloadErr) => {
-               if (downloadErr) console.error('Download error:', downloadErr);
-          });
-     });
-}
+export { UPLOAD_DIR };

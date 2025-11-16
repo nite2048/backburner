@@ -15,11 +15,12 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(express.json({ limit: "100mb" }));
+
 // Always use the validate midddleware first cuz it works in sequence ig
 app.use('/auth', authRouter)
 app.use('/tests', validate, tests)  // If validated then req.user != undefined; route logic can be followed through with the user related stuff
 app.use('/postman', tests)
-app.use(express.json());
 
 await connectDatabase()
 app.listen(3000);

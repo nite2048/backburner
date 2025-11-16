@@ -1,252 +1,410 @@
 <script>
-    import { onMount } from "svelte";
-    import Card from "../lib/Card.svelte";
+     import { onMount } from "svelte";
+     import Card from "../lib/Card.svelte";
 
-     let fileInput, preview, lastUrl, statusMessage = '', previewImage = false, isLoading = false, data;
+     let container
+     let altText, currentUrl, json
+     let isUploading = false, isImageInBlob = false;
+     let UPLOAD_ENDPOINT = "http://localhost:3000/postman/upload64";
 
-     async function uploadImage(e) {
-          e.preventDefault();
-          const file = fileInput.files[0];
-
-          if (!file) {
-               statusMessage = 'Please select a file.';
-               return;
-          }
-
-          isLoading = true;
-          statusMessage = 'Uploading...';
-          const formData = new FormData();
-          formData.append('image', file);
-
-          await postImage(formData);
-          isLoading = false;
-          removeImage();
+     async function blobToBase64(blob) {
+          return new Promise((resolve, reject) => {
+               const reader = new FileReader();
+               reader.onloadend = () => resolve(reader.result);
+               reader.onerror = reject;
+               reader.readAsDataURL(blob); // produces "data:image/jpeg;base64,AAA..."
+          });
      }
 
-     async function postImage(formData) {
-          try {
-               const res = await fetch('http://localhost:3000/tests/upload', { method: 'POST', body: formData });
-               if (!res.ok) throw new Error(`Upload with status ${res.status}`);
+     async function sendImage(blobUrl) {
+          isUploading = true;
 
-               data = await res.json();
-               statusMessage = data.message || 'Upload successful';
-          } catch (err) {
-               statusMessage = `Error: ${err.message}`;
-          }
+          const blob = await fetch(blobUrl).then(r => r.blob());
+          const base64 = await blobToBase64(blob);
+
+          const response = await fetch(UPLOAD_ENDPOINT, {
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({
+                    filename: altText,
+                    data: base64
+               })
+          });
+
+          json = await response.json(); //Do something with JSON
+          isUploading = false;
      }
 
-     function removeImage(){
-          if (lastUrl) {
-               URL.revokeObjectURL(lastUrl);
-               lastUrl = undefined;
-          }
+     function removeImage() {
+          isImageInBlob = false;
+          container.setAttribute("data-present", "false");
+          container.removeEventListener('click', oneClickPost)
 
-          preview.innerHTML = ''
-          preview.style.background = "var(--bg)"
-          previewImage = false;
+          if (currentUrl) URL.revokeObjectURL(currentUrl);
+          currentUrl = undefined;
      }
 
      function onChange(e) {
-          if (lastUrl) {
-               URL.revokeObjectURL(lastUrl);
-               lastUrl = undefined;
-          }
-
-          preview.innerHTML = ''
-
-          const file = e.target.files  && e.target.files[0];
-          if (!file) return;
-
+          removeImage();
+          const file = e.target.files[0];
           if (!file || !file.type.startsWith("image/")) return;
-          lastUrl = URL.createObjectURL(file);
 
-          const img = document.createElement("img");
-          img.src = lastUrl;
-          img.alt = file.name;
-          img.style.maxHeight = "100%";
-          img.style.borderRadius = ".75rem";
+          currentUrl = URL.createObjectURL(file);
+          altText = file.name;
 
-          preview.appendChild(img);
-          preview.style.backgroundImage = "repeating-linear-gradient(135deg, transparent 0 5px, var(--faded-primary) 5px 10px)"
-          preview.style.backgroundRepeat = "repeat";
-          previewImage = true;
+          isImageInBlob = true;
+          container.setAttribute("data-present", "true");
+          container.addEventListener('click', oneClickPost)
+          // document.getElementById('close').addEventListener("click", e => close(e))
      }
 
-     onMount(() => {
-          preview = document.getElementById('preview')
-          const input = document.querySelector('input[type="file"]')
-
-          if (input) input.addEventListener("change", onChange);
-     })
-
+     const oneClickPost = () => { if (currentUrl) sendImage(currentUrl)}
+     const close = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          removeImage()
+     }
+     onMount(() => {container.addEventListener("change", onChange)})
 </script>
 
-{#if data}
 <main>
-     <Card displayData={data}/>
-</main>
-{:else}
-<main>
-     <div id="preview">
-          {#if previewImage}
-               <button id="close" type="button" on:click={removeImage} disabled={isLoading}>×</button>
+     {#if json}
+          <Card displayData={json} />
+     {:else}
+          {#if isUploading}
+               <div id="uploading">
+                    <div class="loader"></div>
+                    <p><span style="color: var(--primary); text-decoration: underline;"> please wait.</span> this may take a few seconds</p>
+               </div>
+          {:else}
+               <form id="container" bind:this={container} data-present="false">
+                    {#if isImageInBlob}
+                         <img id='preview' src={currentUrl} alt={altText}/>
+                         <button id="close" on:click={() => removeImage()}>
+                         <svg xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 512 512"
+                              class="close-icon">
+                              <line x1="100" y1="100" x2="412" y2="412"
+                                   stroke="black" stroke-width="90" stroke-linecap="round"/>
+                              <line x1="412" y1="100" x2="100" y2="412"
+                                   stroke="black" stroke-width="90" stroke-linecap="round"/>
+                         </svg>
+                         </button>
+
+                         <div id="preview--hover">
+                              <p>click to upload</p>
+                         </div>
+                    {:else}
+                         <div role="button" id="overlay">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                                   <g>
+                                        <path d="M336.5,495.1c7.9,7.9,20.6,7.9,28.5,0c7.9-7.9,7.9-20.6,0-28.5l-34.2-34.2l-28.5,28.5L336.5,495.1z"/>
+                                        <path d="M401.5,430c7.9,7.9,20.6,7.9,28.5,0c7.9-7.9,7.9-20.6,0-28.5l-34.2-34.2l-28.5,28.5L401.5,430z"/>
+                                        <path d="M466.6,365c7.9,7.9,20.6,7.9,28.5,0c7.9-7.9,7.9-20.6,0-28.5l-34.2-34.2l-28.5,28.5L466.6,365z"/>
+                                        <path d="M456.7,204l-136-4.5l-118.1-118.2c-33.5-33.5-148.3-94-181.8-60.5s27,148.3,60.5,181.8l118.1,118.2l4.5,135.8
+                                                  c0.5,16,19.9,23.7,31.3,12.3l233.8-233.6C480.3,223.9,472.7,204.5,456.7,204z"/>
+                                   </g>
+                              </svg>
+                              <p>click anywhere to <span style="color: var(--primary); text-decoration: underline;"> upload.</span></p>
+                              <input type="file" accept="image/*" hidden/>
+                         </div>
+                    {/if}
+               </form>
           {/if}
-     </div>
-	<form on:submit={uploadImage}>
-	      <label style="display: {previewImage ? 'none' : 'flex'};" for="fileInput" class="upload">
-	           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342.219 342.219" class="upload-icon">
-	                <path d="M180.52 107.507c-4.988-4.99-13.825-4.99-18.813 0l-50.892 50.893c-5.197 5.197-5.197 13.618 0 18.814s13.623 5.196 18.814 0l28.179-28.182v111.273c0 7.348 5.958 13.305 13.305 13.305s13.305-5.957 13.305-13.305V149.033l28.184 28.182c2.596 2.6 6.002 3.898 9.406 3.898s6.812-1.299 9.406-3.898c5.197-5.197 5.197-13.617 0-18.814l-50.894-50.894z"/></svg>
-	           <input type="file" id="fileInput" bind:this={fileInput} accept="image/*" hidden/>
-	           <p class="word">Drag or click to upload</p>
-	      </label>
-
-	      {#if !previewImage}
-	           <button class="upload" style="display: none;" type="submit">Upload</button>
-	      {:else}
-	           <button class="upload" type="submit" disabled={isLoading}>
-	                {#if isLoading}Uploading...{:else}Upload {preview.getElementsByTagName("img")[0].alt}{/if}
-	           </button>
-	      {/if}
-	 </form>
+     {/if}
 </main>
-{/if}
-
-
 
 <style>
-     *{
-          color: white;
-     }
+    main {
+		width: 100svw;
+		height: 100svh;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-direction: column;
+		font-family: 'Spock';
+		user-select: none;
+		z-index: 2;
+		background: repeating-linear-gradient(135deg, transparent 0 5px, var(--pattern) 5px 10px);
+		background-size: 200% 200%;
+		background-position: 0% 0%;
+		animation: stripes 120s linear infinite;
+	}
 
-     #close {
-          position: absolute;
-          top: 0;
-          right: 0;
-          transform: translate(50%, -50%);
-          width: 1.5rem;
-          height: 1.5rem;
-          padding: 0;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          border: none;
-          background: rgba(255,255,255,0.08);
-          color: var(--accent);
-          font-size: 16px;
-          line-height: 1;
-          border-radius: 50%;
-          cursor: pointer;
-     }
+	main::before {
+		all: revert;
+		content: '';
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 100%;
+		height: 15%;
+		z-index: -1;
+		box-shadow: 0px -20px 20px 10px rgb(0 0 0 / 70%);
+		background: var(--bg);
+	}
 
-     #close:hover {
-          background: rgba(255,255,255,0.12);
-     }
+	main::after {
+		all: revert;
+		content: '';
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 100%;
+		height: 20%;
+		z-index: -1;
+		background: rgba(241, 231, 53);
+		mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 50px 100%;
+	}
 
-     #close:active {
-          background: var(--primary);
-     }
-
-     main{
-          width: 100svw;
-          height: 100svh;
-          background-color: var(--bg);
+    #container {
           display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+
+		width: 90%;
+		height: 90%;
+		max-width: 20rem;
+		max-height: 45rem;
+
+		padding: 1rem;
+		background-color: rgba(0, 0, 0, 0.13);
+		border: 0.12rem dashed rgba(255, 255, 255, 0.12);
+		background-size: contain;
+
+		cursor: pointer;
+
+		border-radius: 0.75rem;
+		backdrop-filter: blur(2px);
+		-webkit-backdrop-filter: blur(2px);
+
+		box-shadow: inset 0px 0px 40px 0px rgba(0, 0, 0, 0), 0px 0px 40px 0px rgba(0, 0, 0, 1);
+
+		position: relative;
+		transition:all 0.2s ease-in;
+	}
+
+	#uploading{
+     	display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          flex-direction: column;
-          gap: 1rem
-     }
 
-     form{
-          display: flex;
-          width: 100%;
-          align-items: center;
-          justify-content: center;
-          flex-direction: column;
-     }
-
-     .upload{
-          width: 90%;
-          min-width: 18rem;
+          width: 95%;
+          height: 90%;
+          max-width: 20rem;
+          max-height: 45rem;
 
           padding: 1rem;
+	}
 
-          font-size: 1.5rem;
+	#container[data-present="false"]:hover{
+	     box-shadow: inset 0px 0px 40px 0px rgba(0, 0, 0, 0.25), 0px 0px 50px 0px rgba(241, 231, 53, 0.2);
+	}
+
+	svg{
+          width: 15%;
+     	fill: var(--primary);
+          margin: 1rem;
+          margin-right: 1.5rem;
+          overflow: visible;
+	}
+
+	path{
+	    	filter: drop-shadow(0px 0px 45px rgba(241, 231, 53, 0.3));
+	}
+
+	p {
+		color: rgba(255, 255, 255, 0.7);
+		text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
+		text-decoration: underline;
+		text-align: center;
+		font-size: 0.7rem;
+		width: 40%
+	}
+
+	#overlay{
+	     width: 100%;
+		height: 100%;
+     	position: absolute;
+
           display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+	}
+
+	input{
+          width: 100%;
+          height: 100%;
+
+          position: absolute;
+          display: flex;
+
+         	opacity: 0;
+         	z-index: 2;
+	}
+
+    .glow {
+		box-shadow: 0px 0px 40px 0px rgba(0, 0, 0, 1);
+	}
+
+    #preview{
+        width: 100%;
+        height: 100%;
+        font-size: 1.5rem;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        color: var(--accent);
+        box-sizing: border-box;
+        object-fit: contain;
+    }
+
+    #preview--hover{
+        	display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          margin-bottom: 1rem;
 
-          border: .12rem dashed rgba(255,255,255,.12);
-          border-radius: .75rem;
-
-          cursor: pointer;
-
-          background: var(--bg);
-          color: var(--accent);
-
-          box-sizing: border-box;
-     }
-
-     .upload svg{
-          width:2.4rem;
-          height:2.4rem;
-          color: var(--primary);
-          fill: var(--primary);
-          padding-bottom: 5px;
-          flex:0 0 auto
-     }
-
-     #preview{
-          width: 90%;
-          min-width: 15rem;
-          height: 60%;
-          min-height: 15rem;
-          font-size: 1.5rem;
-
-          margin-top: 1rem;
-
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          border: 0.12rem dashed rgba(255,255,255,.12);
+          width: 100%;
+          height: 100%;
+          max-width: 20rem;
+          max-height: 45rem;
           border-radius: 0.75rem;
+          background-color: transparent;
 
-          background: var(--bg);
-          color: var(--accent);
+          position: absolute;
+          z-index: 2;
+          transition:all 0.2s ease-in;
+    }
 
-          box-sizing: border-box;
-          flex: 3;
-     }
+    #preview--hover > * {
+         color: transparent !important;
+         font-size: 1.15rem;
+         width: 100%;
+         transition:all 0.2s ease-in;
+         text-decoration: underline;
+    }
 
-     .word {
-       position: relative;
-       text-shadow: .1em 0.1em 0 rgba(0, 0, 0, 0.6),  .08em 0.08em 0 rgba(0, 0, 0, 0.6);
-       z-index: 2;
-     }
 
-     .word:before {
-       background-color: var(--fade);
-       content: " ";
-       height: 40%;
-       position: absolute;
-       left: 3.5%;
-       top: 50%;
-       width: 98%;
-       z-index: -1;
-     }
+    #preview--hover:hover{
+         background-color: rgba(0, 0, 0, 0.7);
+         box-shadow: 0px 0px 50px 0px rgba(241, 231, 53, 0.2);
+    }
 
-     @media (max-width:460px){
-          .upload svg{
-               width: 1.9rem;
-               height: 1.9rem
-          }
+    #preview--hover:hover p{
+         color: var(--primary) !important;
+    }
 
-          .upload{
-               font-size: 1.1rem;
-               gap: 0.15rem
-          }
-     }
+   form{
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    #close {
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translate(50%, -50%);
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: rgba(255,255,255,0.2);
+        color: var(--accent);
+        font-size: 16px;
+        line-height: 1;
+        padding: 0.3rem;
+        z-index: 3;
+        border-radius: 1rem;
+        cursor: pointer;
+    }
+
+    #close svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        margin-left: 1.475rem;
+    }
+
+    #close > svg > * {
+         stroke:  rgba(241, 231, 53, 1) !important;
+         filter: opacity(0.75);
+         z-index: 4;
+    }
+
+    #close:hover {
+        background: rgba(255, 255, 255, 0.25);
+        box-shadow: 0px 0px 50px 0px rgba(241, 231, 53, 0.6);
+    }
+
+    #close:active {
+        background: var(--primary);
+    }
+
+    .loader {
+        width: 60px;
+        aspect-ratio: 2;
+        --gradient: no-repeat radial-gradient(circle closest-side, white 90% ,black);
+        background:
+                var(--gradient) 0   50%,
+                var(--gradient) 50%  50%,
+                var(--gradient) 100% 50%;
+        background-size: calc(100%/3) 50%;
+        animation: load 1s infinite linear;
+    }
+
+    @keyframes load {
+        20%{background-position:0   0, 50%  50%,100%  50%}
+        40%{background-position:0 100%, 50%   0,100%  50%}
+        60%{background-position:0  50%, 50% 100%,100%   0}
+        80%{background-position:0 50%, 50%  50%,100% 100%}
+    }
+    @keyframes stripes {
+		to {
+			background-position: 100% 100%;
+		}
+	}
+
+    @keyframes wave {
+        0%   { transform: translateY(0) rotate(var(--rot, 0deg)); }
+        25%  { transform: translateY(-6px) rotate(var(--rot, 0deg)); }
+        50%  { transform: translateY(0) rotate(var(--rot, 0deg)); }
+        75%  { transform: translateY(6px) rotate(var(--rot, 0deg)); }
+        100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    }
+
+    @media (max-width: 650px) {
+		.glow {
+			box-shadow: 0px 0px 40px 0px rgba(0, 0, 0, 0.35);
+		}
+
+		main::after {
+			all: revert;
+			content: '';
+			position: absolute;
+			z-index: -1;
+			bottom: -1px;
+			right: 0;
+			width: 100%;
+			height: 21%;
+			background: rgba(241, 231, 53);
+			mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 50px 100%;
+		}
+	}
 </style>

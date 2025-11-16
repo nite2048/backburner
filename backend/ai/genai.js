@@ -180,11 +180,7 @@ async function closestMatch(metaData, queryData) {
      }
 }
 
-export async function testAPI(path) {
-     const base64ImageFile = fs.readFileSync(path, {
-          encoding: "base64",
-     });
-
+export async function runBase64(base64ImageFile) {
      try {
           console.log("🚀 STEP 1: Starting metadata acquisition from image...");
           let metaData = await acquireMetadata(base64ImageFile);
