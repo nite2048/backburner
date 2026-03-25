@@ -21,19 +21,31 @@ model User {
 }
 
 model Item {
-  id                 Int      @id @default(autoincrement())
-  description        String
+  id           Int      @id @default(autoincrement())
+  description  String
+  category     String
+  startDate    String
+  averageScore Float
+  coverImage   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id])
+  title        Title?
+  genres       Genre[]  @relation("GenreToItem")
+}
+
+model Title {
+  id                 Int     @id @default(autoincrement())
   name               String
-  translatedName     String?
   originalName       String?
   transliteratedName String?
-  category           String
-  genres             String
-  startDate          DateTime
-  averageScore       Float
-  coverImage         String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  userId             String
-  user               User     @relation(fields: [userId], references: [id])
+  itemId             Int     @unique
+  item               Item    @relation(fields: [itemId], references: [id])
+}
+
+model Genre {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  item Item[] @relation("GenreToItem")
 }

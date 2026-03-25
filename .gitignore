@@ -1,0 +1,11 @@
+frontend/src/lib/dashboardData.json
+node_modules
+dist
+.idea
+node_modules
+.env
+/generated/prisma
+/database/uploads
+tests
+dev
+backend/database/uploads

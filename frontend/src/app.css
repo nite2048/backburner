@@ -1,43 +1,92 @@
 @font-face {
-    font-family: 'Spock';
-    src: url('../lib/fonts/Spock.woff2') format('woff2'),
-        url('../lib/fonts/Spock.woff') format('woff');
+    font-family: "Spock";
+    src:
+        url("../lib/fonts/Spock.woff2") format("woff2"),
+        url("../lib/fonts/Spock.woff") format("woff");
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Saygon';
-    src: url('../lib/fonts/Saygon.woff2') format('woff2'),
-        url('../lib/fonts/Saygon.woff') format('woff');
+    font-family: "Saygon";
+    src:
+        url("../lib/fonts/Saygon.woff2") format("woff2"),
+        url("../lib/fonts/Saygon.woff") format("woff");
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
 
-*{
-     margin: 0;
-     padding: 0;
-     box-sizing: border-box;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    position: relative;
+    border: none;
+    font-family: "Spock";
+}
+
+:root {
+    font-size: 16px;
+
+    --primary: #f1e735;
+    --faded-primary: rgba(241, 231, 53);
+    --fade: rgba(241, 231, 53);
+
+    --pattern: rgba(22, 22, 7, 1);
+    --hidden: rgba(0, 0, 0, 0.8);
+
+    --bg: black;
+    --accent: white;
+}
+
+body{
+     height: 100svh;
+     width: 100svw;
+     min-height: 0;
+     background-color: black;
      position: relative;
-     border: none;
-     font-family: 'Spock';
+     overflow: hidden;
+     z-index: -1;
+}
+
+span {
+	color: var(--primary);
+	text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
+ 	text-align: center;
+	font-size: 2rem;
+}
+
+p{
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
+    text-decoration: underline;
+    text-align: center;
+    font-size: 1rem;
+}
+
+svg{
+    width: 15%;
+    fill: var(--primary);
+    margin: 1rem;
+    margin-right: 1.5rem;
+    overflow: visible;
+}
+
+svg > *{
+    filter: drop-shadow(0px 0px 45px rgba(241, 231, 53, 0.3));
 }
 
 
-:root{
-     font-size: 16px;
+section {
+    height: 100%;
+    width: 100%;
 
-     --primary: #f1e735;
-     --faded-primary: rgba(241, 231, 53);
-     --fade: rgba(241, 231, 53);
-
-     --pattern: rgba(22, 22, 7, 1);
-     --hidden: rgba(0, 0, 0, 0.8);
-
-     --bg: black;
-     --accent: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
 }
 
 * {
@@ -47,7 +96,7 @@
 }
 
 *::-webkit-scrollbar {
-    width: var(--sb-size)
+    width: var(--sb-size);
 }
 
 *::-webkit-scrollbar-track {
@@ -62,7 +111,12 @@
 
 @supports not selector(::-webkit-scrollbar) {
     * {
-        scrollbar-color: var(--sb-thumb-color)
-        var(--sb-track-color);
+        scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
     }
+}
+
+@media (max-width: 600px) {
+     p{
+          font-size: 0.9rem;
+     }
 }

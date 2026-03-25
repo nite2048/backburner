@@ -9,7 +9,7 @@ const ai = new GoogleGenAI({
 
 const Category = createEnum(["movie", "tv", "manga", "others"]);
 
-async function acquireMetadata(imageFile) {
+export async function acquireMetadata(imageFile) {
      const contents = [
           {
                inlineData: {
@@ -20,7 +20,7 @@ async function acquireMetadata(imageFile) {
      ];
 
      const response = await ai.models.generateContent({
-          model: "gemini-2.5-pro",
+          model: "gemini-2.5-flash",
           config: {
                systemInstruction: fs.readFileSync(
                     "./ai/systemInstructions/metadataSystemInstructions.txt",
@@ -45,7 +45,7 @@ async function acquireMetadata(imageFile) {
      return parseMarkdown(responseText);
 }
 
-async function handleApiCalls(data, isAdult = true) {
+export async function handleApiCalls(data, isAdult = true) {
      if (!Category.match(data.category)) {
           throw new Error(`Invalid category: ${data.category}. Valid categories are: ${Object.values(Category).join(", ")}`);
      }
@@ -71,7 +71,7 @@ async function handleApiCalls(data, isAdult = true) {
      }
 }
 
-async function tmdb(query, category, isAdult = true) {
+export async function tmdb(query, category, isAdult = true) {
      const url = `https://api.themoviedb.org/3/search/${category}?query=${encodeURIComponent(query)}&include_adult=${isAdult}&language=en-US&page=1`;
      const options = {
           method: "GET",
@@ -95,7 +95,7 @@ async function tmdb(query, category, isAdult = true) {
      }
 }
 
-async function anilist(searchName) {
+export async function anilist(searchName) {
   const query = `
     query ($search: String) {
       Page(page: 1, perPage: 10) {
@@ -159,7 +159,7 @@ async function anilist(searchName) {
   }
 }
 
-async function closestMatch(metaData, queryData) {
+export async function closestMatch(metaData, queryData) {
      if (queryData.length === 0) {
           throw new Error(`No search results found`);
      } else if (queryData.length === 1) {
@@ -180,48 +180,7 @@ async function closestMatch(metaData, queryData) {
      }
 }
 
-export async function runBase64(base64ImageFile) {
-     try {
-          console.log("🚀 STEP 1: Starting metadata acquisition from image...");
-          let metaData = await acquireMetadata(base64ImageFile);
-          console.log(JSON.stringify(metaData, null, 2));
-          console.log("─".repeat(50));
-
-          let browse = await handleApiCalls(metaData);
-          console.log("✅ STEP 2 COMPLETED: API call executed successfully");
-          console.log("📊 Browse results:", JSON.stringify(browse, null, 2));
-          console.log("─".repeat(50));
-
-          console.log("🎯 STEP 3: Finding closest match...");
-          let closest = await closestMatch(metaData, browse);
-          console.log("✅ STEP 3 COMPLETED: Closest match found");
-          console.log("📊 Closest match:", JSON.stringify(closest, null, 2));
-          console.log("─".repeat(50));
-
-          console.log("🔄 STEP 4: Merging objects...");
-          let mergedData = deepMergeObjects(metaData, closest);
-          console.log("✅ STEP 4 COMPLETED: Objects merged successfully");
-          console.log("📊 Merged data:", JSON.stringify(mergedData, null, 2));
-          console.log("─".repeat(50));
-
-          console.log("🎨 STEP 5: Reconciling final object data...");
-          let finalResult = reconcileObjectData(mergedData, metaData.category);
-
-          console.log("✅ STEP 5 COMPLETED: Object data reconciled");
-          console.log("📊 Final result:", JSON.stringify(finalResult, null, 2));
-          console.log("🎉 ALL STEPS COMPLETED SUCCESSFULLY!");
-          console.log("=".repeat(50));
-
-          return finalResult; // The properties with the same name are overridden
-
-     } catch (error) {
-          console.error("❌ Error in handlePostReq:", error);
-          console.log("=".repeat(50));
-          throw error;
-     }
-}
-
-function deepMergeObjects(obj1, obj2) {
+export function deepMergeObjects(obj1, obj2) {
     if (!obj1 || typeof obj1 !== 'object') obj1 = {};
     if (!obj2 || typeof obj2 !== 'object') obj2 = {};
 
@@ -244,7 +203,7 @@ function deepMergeObjects(obj1, obj2) {
     return result;
 }
 
-function reconcileObjectData(data){
+export function reconcileObjectData(data){
      if (!Category.match(data.category)) {
           throw new Error(`Empty object or Invalid category: ${data.category}. Valid categories are: ${Object.values(Category).join(", ")}`);
      }
@@ -262,7 +221,9 @@ function reconcileObjectData(data){
                mappedGenres.push(genreId[data.genre_ids])
           }else {
                for(const id of data.genre_ids){
-                    mappedGenres.push(genreId[id])
+                    if(genreId[id]){
+                         mappedGenres.push(genreId[id])
+                    }
                }
           }
 
@@ -275,7 +236,7 @@ function reconcileObjectData(data){
                },
                category: data.category,
                genres: mappedGenres,
-               startDate: data.first_air_date,
+               startDate: (data.first_air_date).toString(),
                averageScore: data.vote_average,
                coverImage : `https://image.tmdb.org/t/p/original/${data.poster_path}`
           }
@@ -292,7 +253,7 @@ function reconcileObjectData(data){
                },
                category: data.category,
                genres: data.genres,
-               startDate: data.startDate.year,
+               startDate: (data.startDate.year).toString(),
                averageScore: data.averageScore,
                coverImage : data.coverImage.extraLarge
           }
@@ -304,7 +265,7 @@ function reconcileObjectData(data){
      }
 } // TODO: Figure out what to do if some of the atrributes are null (api's fault)
 
-function parseMarkdown(markdownString) {
+export function parseMarkdown(markdownString) {
      // First, try the original markdown code block pattern
      const codeBlockRegex = /```(?:javascript|json)?\s*({[\s\S]*?})\s*```/;
      let match = markdownString.match(codeBlockRegex);
@@ -339,7 +300,7 @@ function parseMarkdown(markdownString) {
      }
 }
 
-function createEnum(arr) {
+export function createEnum(arr) {
      let obj = Object.create(null);
      for (let val of arr) {
           obj[val] = Symbol(val);

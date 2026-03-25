@@ -1,42 +1,55 @@
-import prisma from '../database/prismaClient.js'
+import { findUserById } from '../database/db.js';
 import jsonwebtoken from 'jsonwebtoken';
 import dotenv from "dotenv"
 
 dotenv.config({quiet : true});
 
 const validate = async (req, _res, next) => {
-  if (!req.headers.authorization) {
-    throw new Error('Unauthorized');
-  }
+     const cookies = parseCookies(req.headers.cookie)
 
-  const token = req.headers.authorization.split(' ')[1];
+     if (!cookies) {
+          const err = new Error('Unauthorized');
+          err.status = 401
+          next(err)
+     }
 
-  if (!token) {
-    throw new Error('Token not found');
-  }
+     const token = cookies.jwt;
 
-  try {
-    const decode = jsonwebtoken.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.user.findUnique({
-      where: {
-        email: decode.email,
-      },
-    });
-    req.user = user || undefined;
-    next();
-  } catch (err) {
-    req.user = undefined;
-    next();
-  }
+     if (!token) {
+          const err = new Error('User not found');
+          err.status = 403
+          next(err)
+     }
+
+     try {
+          const decode = jsonwebtoken.verify(token, process.env.JWT_SECRET);
+          const user = await findUserById(decode) // The decode is a string that contains the user id contained in the payload
+
+          if(!user) {
+               const err = new Error('User not found');
+               err.status = 403
+               next(err) // Stop route execution
+          }
+
+          req.user = user; // Make the user available for the subsequent middleware
+          next();
+
+     } catch (err) {
+          next(err);
+     }
 };
 
-/* Explaination of the working
-     try {
-     if (!req.user) {
-      return res.sendStatus(401); 
-     } 
-     // Basically if user is not undefined then the route knows to proceed further otherwise it won't
-     // however there is a check for the header auth token so idk whether it is even neccessary
-*/
+
+function parseCookies(cookieHeader) {
+     if (!cookieHeader)
+         return {};
+
+     return cookieHeader.split(';').reduce((cookies, pair) => {
+          const [key, ...value] = pair.trim().split('=');
+          cookies[key] = decodeURIComponent(value.join('='));
+
+          return cookies;
+     }, {});
+}
 
 export default validate;
