@@ -1,9 +1,8 @@
 <script>
      import { onDestroy, onMount } from "svelte";
 
-
-     // TODO: Incorporate "scroll_speed"
      const minOpacity = 0.1; // Base fade floor so navbar never becomes fully invisible while scrolling.
+     let fadeSpeed = 0.3; // Higher = faster fade response per scroll delta.
      let scrollOpacity = 1;     // `scrollOpacity` tracks scroll-based fade, while `opacity` is the rendered value.
      let opacity = 1;
 
@@ -13,6 +12,30 @@
 
      let header;
      let scrollTarget;
+     let scrollObserver;
+
+     const mediaQuery = window.matchMedia('(min-width: 600px)');
+     if (mediaQuery.matches) {
+          console.log("Desktop view active!");
+          fadeSpeed = 1;
+     }
+
+
+     function addScrollListener(target) {
+          if (target === window) {
+               window.addEventListener("scroll", onScroll, { passive: true });
+          } else if (target) {
+               target.addEventListener("scroll", onScroll, { passive: true });
+          }
+     }
+
+     function removeScrollListener(target) {
+          if (target === window) {
+               window.removeEventListener("scroll", onScroll);
+          } else if (target) {
+               target.removeEventListener("scroll", onScroll);
+          }
+     }
 
      function readScrollTop() {
           if (!scrollTarget || scrollTarget == window){
@@ -25,14 +48,25 @@
      function isScrollable(el) {
           const styles = getComputedStyle(el);
           const canScrollY = styles.overflowY === "auto" || styles.overflowY === "scroll";
-          return canScrollY && el.scrollHeight > el.clientHeight;
+          return canScrollY;
      }
 
      function resolveScrollTarget() {
           if (!header || !header.parentElement) return window;
-          const candidates = Array.from(header.parentElement.querySelectorAll("*")).filter((el) => el !== header);
+          const candidates = Array.from(header.parentElement.children).filter((el) => el !== header);
           const localScrollable = candidates.find((el) => isScrollable(el));
           return localScrollable ?? window;
+     }
+
+     function refreshScrollTarget() {
+          const nextTarget = resolveScrollTarget();
+          if (nextTarget === scrollTarget) return;
+
+          removeScrollListener(scrollTarget);
+          scrollTarget = nextTarget;
+          addScrollListener(scrollTarget);
+          lastScrollY = readScrollTop();
+          handleScroll();
      }
 
      function handleScroll() {
@@ -42,13 +76,15 @@
                     if (current <= 8) {
                          opacity = 1;
                          scrollOpacity = 1;
-                    } else if (delta > 0) {
-                         opacity = Math.max(minOpacity, opacity - Math.min(delta / 220, 0.06));
-                         scrollOpacity = Math.max(minOpacity, scrollOpacity - Math.min(delta / 220, 0.06));
-                    } else if (delta < 0) {
-                         opacity = Math.min(1, opacity + Math.min(Math.abs(delta) / 80, 0.14));
-                         scrollOpacity = Math.min(1, scrollOpacity + Math.min(Math.abs(delta) / 80, 0.14));
-                    }
+                     } else if (delta > 0) {
+                         const fadeOut = Math.min((delta / 220) * fadeSpeed, 0.06 * fadeSpeed);
+                         opacity = Math.max(minOpacity, opacity - fadeOut);
+                         scrollOpacity = Math.max(minOpacity, scrollOpacity - fadeOut);
+                     } else if (delta < 0) {
+                         const fadeIn = Math.min((Math.abs(delta) / 80) * fadeSpeed, 0.14 * fadeSpeed);
+                         opacity = Math.min(1, opacity + fadeIn);
+                         scrollOpacity = Math.min(1, scrollOpacity + fadeIn);
+                     }
 
                     // Hover temporarily restores full opacity without losing scroll fade state.
                     opacity = isHovering ? 1 : scrollOpacity;
@@ -78,23 +114,22 @@
                }
 
                onMount(() => {
-                    // Find the actual scroll container and bind fade updates to it.
-                    scrollTarget = resolveScrollTarget();
-                    lastScrollY = readScrollTop();
+                     // Find the actual scroll container and bind fade updates to it.
+                     scrollTarget = resolveScrollTarget();
+                     lastScrollY = readScrollTop();
 
-                    if (header) {
-                         header.addEventListener("mouseenter", handleHeaderEnter);
-                         header.addEventListener("mouseleave", handleHeaderLeave);
-                    }
+                     if (header) {
+                          header.addEventListener("mouseenter", handleHeaderEnter);
+                          header.addEventListener("mouseleave", handleHeaderLeave);
 
-                    if (scrollTarget === window) {
-                         window.addEventListener("scroll", onScroll, { passive: true });
-                    } else {
-                         scrollTarget.addEventListener("scroll", onScroll, { passive: true });
-          }
+                          scrollObserver = new MutationObserver(refreshScrollTarget);
+                          scrollObserver.observe(header.parentElement, { childList: true });
+                     }
 
-                    handleScroll();
-                        });
+                     addScrollListener(scrollTarget);
+
+                     handleScroll();
+                         });
 
                         onDestroy(() => {
                              if (header) {
@@ -102,16 +137,31 @@
                                   header.removeEventListener("mouseleave", handleHeaderLeave);
                              }
 
-                             if (scrollTarget === window) {
-                                  window.removeEventListener("scroll", onScroll);
-                             } else if (scrollTarget) {
-                                  scrollTarget.removeEventListener("scroll", onScroll);
-          }
-     });
+                             removeScrollListener(scrollTarget);
+
+                             if (scrollObserver) {
+                                  scrollObserver.disconnect();
+                             }
+      });
+
+     function logout() {
+          fetch('http://localhost:3000/auth/logout', {
+               method: 'GET',
+               credentials: 'include'
+          })
+          .then(res => {
+               if (res.ok) {
+                    window.location.href = '/';
+               }
+          })
+          .catch(err => {
+               console.error('Logout failed:', err);
+          });
+     }
 </script>
 
 <section bind:this={header} class="header glass" style={`opacity: ${opacity};`}>
-     <button class="rounded profile" type="button" aria-label="Logout">
+     <button class="rounded profile" type="button" aria-label="Logout" on:click={logout} >
           <svg class="logout-icon" width="1rem" height="1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                <polyline points="16 17 21 12 16 7"/>

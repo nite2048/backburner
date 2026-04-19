@@ -1,22 +1,23 @@
 <script>
     import Navbar from "../lib/Navbar.svelte";
     import Card from "../lib/Card.svelte";
+    import Error from "../lib/Error.svelte";
 
 
-    // // Only for testing
+    // Only for testing
     // import * as data from "../lib/dashboardData.json";
-    // const items = data.default;;
+    // const items = data.default;
 
      const items =  fetch('http://localhost:3000/dashboard/getAll', {
           credentials: 'include'
-     }).then(res => res.json());
+     }).then(res => res.json());     
 </script>
 
 
 <section>
           <Navbar/>
           {#await items}
-               <section style="display: flex; width: 100%" class="width-limiter snaps-height">
+               <section style="background: radial-gradient(circle,rgba(0, 0, 0, 0.3) 10%, transparent 100%); z-index: -1;">
                     <div class="loader"></div>
                </section>
           {:then data}
@@ -27,9 +28,7 @@
                     {/each}
                </section>
           {:catch error}
-               <section style="display: flex; width: 100%" class="width-limiter snaps-height">
-                    <span style="color: red;">Error: {error.message}</span>
-               </section>
+               <Error code={error.code} message={error.message.toLowerCase()}/>
           {/await}
 </section>
 
@@ -45,8 +44,6 @@
            gap: 1.5rem;
            background-color: rgba(0, 0, 0, 0.5);
 
-           overflow-y: auto;
-           scroll-behavior: smooth;
            z-index: 3;
       }
 
@@ -62,24 +59,15 @@
      }
 
      .snaps-height{
+          overflow-y: scroll;
+          scroll-behavior: smooth;
           scroll-snap-type: y none;
-     }
 
-     .snaps-height > *{
-          scroll-snap-align: center;
      }
 
     	.shadow {
 		box-shadow: 0px 0px 40px 0px rgba(0, 0, 0, 1);
 	}
-
-     /*.footer{
-          width: 100%;
-          height: 5%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-     }*/
 
      @media (max-width: 600px) {
           .shadow {

@@ -8,13 +8,13 @@
 </section>
 
 <style>
-	.hidden {
-		color: var(--hidden);
-		font-size: 0.7rem;
-		text-decoration: underline;
-		cursor: pointer;
-	}
-
+     .hidden{
+     	color: var(--hidden);
+     	font-size: 0.7rem;
+     	text-decoration: underline;
+     	cursor: pointer;
+     }
+     
 	.shadow {
 		box-shadow: 0px 0px 40px 0px rgba(0, 0, 0, 1);
 	}

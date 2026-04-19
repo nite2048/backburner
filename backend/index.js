@@ -3,6 +3,7 @@ import { connectDatabase } from "./database/prismaClient.js";
 import authRouter from "./authentication/auth.js";
 import validate from "./authentication/validate.js";
 import crud from "./user/crud.js";
+import { withRetry } from "./ai/utils.js";
 
 const app = express();
 
@@ -17,9 +18,21 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "100mb" }));
 
-// Always use the validate midddleware first cuz it works in sequence ig
 app.use("/auth", authRouter);
-app.use("/dashboard", validate, crud); // If validated then req.user != undefined; route logic can be followed through with the user related stuff
+app.use("/dashboard", validate, crud);
 
-await connectDatabase();
-app.listen(3000);
+try {
+     await withRetry(connectDatabase, {
+          timeout: 10000,
+          retries: 5,
+          backoff: [1000, 5000, 10000, 20000, 60000],
+          onRetry: (error, attempt) => {
+               console.log(`Database connection attempt ${attempt} failed, retrying...`)
+          }
+     })
+     app.listen(3000);
+     console.log("Server listening on port 3000")
+} catch (error) {
+     console.error("Failed to connect to database after multiple attempts:", error.message)
+     process.exit(1)
+}

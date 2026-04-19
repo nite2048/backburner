@@ -31,14 +31,16 @@
     font-size: 16px;
 
     --primary: #f1e735;
-    --faded-primary: rgba(241, 231, 53);
+    --faded-primary: rgba(241, 231, 53, 0.7);
     --fade: rgba(241, 231, 53);
 
     --pattern: rgba(22, 22, 7, 1);
     --hidden: rgba(0, 0, 0, 0.8);
+    --faded: rgba(255, 255, 255, 0.4);
 
     --bg: black;
-    --accent: white;
+    --accent: beige;
+    --error: red;
 }
 
 body{

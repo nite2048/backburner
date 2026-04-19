@@ -112,4 +112,12 @@ router.get('/google/callback', async (req, res) => {
      }
 });
 
+router.get('/logout', (req, res) => {
+     const options = {}
+     return res
+     .clearCookie('jwt', options)
+     .sendStatus(204);
+});
+
+
 export default router

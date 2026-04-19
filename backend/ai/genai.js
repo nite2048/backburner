@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import { GoogleGenAI } from "@google/genai";
+import { withAIRetry, withAPIRetry } from "./utils.js";
 
 dotenv.config({quiet: true});
 const ai = new GoogleGenAI({
@@ -19,16 +20,18 @@ export async function acquireMetadata(imageFile) {
           },
      ];
 
-     const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          config: {
-               systemInstruction: fs.readFileSync(
-                    "./ai/systemInstructions/metadataSystemInstructions.txt",
-                    "utf8",
-               ),
-          },
-          contents: contents,
-     });
+     const response = await withAIRetry(() =>
+          ai.models.generateContent({
+               model: "gemini-2.5-flash",
+               config: {
+                    systemInstruction: fs.readFileSync(
+                         "./ai/systemInstructions/metadataSystemInstructions.txt",
+                         "utf8",
+                    ),
+               },
+               contents: contents,
+          })
+     );
 
      // Extract text and handle edge cases
      let responseText;
@@ -41,7 +44,7 @@ export async function acquireMetadata(imageFile) {
           return null;
      }
 
-     console.log("Response text:", responseText);
+     //console.log("Response text:", responseText);
      return parseMarkdown(responseText);
 }
 
@@ -82,7 +85,9 @@ export async function tmdb(query, category, isAdult = true) {
      };
 
      try {
-          const res = await fetch(url, options);
+          const res = await withAPIRetry((signal) =>
+               fetch(url, { ...options, signal })
+          );
           const json = await res.json();
 
           if(json.total_results === 0) {
@@ -116,6 +121,7 @@ export async function anilist(searchName) {
           }
           status
           averageScore
+          meanScore
           chapters
           volumes
           siteUrl
@@ -143,7 +149,9 @@ export async function anilist(searchName) {
   };
 
   try {
-    const response = await fetch(url, options);
+    const response = await withAPIRetry((signal) =>
+      fetch(url, { ...options, signal })
+    );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -165,16 +173,18 @@ export async function closestMatch(metaData, queryData) {
      } else if (queryData.length === 1) {
           return queryData[0];
      } else {
-          const response = await ai.models.generateContent({
-               model: "gemini-2.5-flash",
-               config: {
-                    systemInstruction: fs.readFileSync(
-                         "./ai/systemInstructions/closestMatchSystemInstructions.txt",
-                         "utf8",
-                    ),
-               },
-               contents: `The basic object: ${JSON.stringify(metaData)} \n The query response: ${JSON.stringify(queryData)} \n`,
-          });
+          const response = await withAIRetry(() =>
+               ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    config: {
+                         systemInstruction: fs.readFileSync(
+                              "./ai/systemInstructions/closestMatchSystemInstructions.txt",
+                              "utf8",
+                         ),
+                    },
+                    contents: `The basic object: ${JSON.stringify(metaData)} \n The query response: ${JSON.stringify(queryData)} \n`,
+               })
+          );
 
           return parseMarkdown(response.text);
      }
@@ -236,14 +246,14 @@ export function reconcileObjectData(data){
                },
                category: data.category,
                genres: mappedGenres,
-               startDate: (data.first_air_date).toString(),
+               startDate: data.first_air_date ? (data.first_air_date).toString() : "Unknown",
                averageScore: data.vote_average,
                coverImage : `https://image.tmdb.org/t/p/original/${data.poster_path}`
           }
           return obj
      } else if (validCategory === Category.manga) {
-          console.log("manga")
-
+          //console.log("manga")
+          //console.log(data)
           const obj = {
                description : data.description,
                title: {
@@ -254,7 +264,7 @@ export function reconcileObjectData(data){
                category: data.category,
                genres: data.genres,
                startDate: (data.startDate.year).toString(),
-               averageScore: data.averageScore,
+               averageScore: data.averageScore ?? data.meanScore ?? null,
                coverImage : data.coverImage.extraLarge
           }
           return obj

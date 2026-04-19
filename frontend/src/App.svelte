@@ -1,12 +1,15 @@
-
 <main>
-    <svelte:component this={current} />
+    <Auth {currentRoute} {routeConfig}>
+         <svelte:component this={current}/>
+    </Auth>
 </main>
-
 
 <script>
      import page from 'page';
+     import Auth from './lib/Auth.svelte';
+
      let current;
+     let currentRoute = '/';
 
      import Redirect from './routes/Redirect.svelte';
      import Upload from './routes/Upload.svelte';
@@ -16,50 +19,74 @@
      import NotFound from './routes/NotFound.svelte';
      import Home from './routes/Home.svelte';
 
-
-     page('/', redirectIfAuthenticated, () => current = Home);
-     page('/register', redirectIfAuthenticated, () => current = Register);
-     page('/dashboard',  () => current = Dashboard);
-     page('/upload', requireAuth, () => current = Upload);
-     page('/unauthorized', () => current = Unauthorized);
-     page('/redirect', () => current = Redirect);
-     page('*', () => current = NotFound);
-
-     async function requireAuth(ctx, next) {
-          try {
-               const res = await fetch('http://localhost:3000/auth/status', {
-                    credentials: 'include'
-               });
-
-               if (res.status === 200) {
-                    // const data = await res.json();
-                    // ctx.user = data.user;
-
-                    next();
-               } else {
-                    current = Unauthorized;
-               }
-          } catch (err) {
-               current = Unauthorized;
+     // Route configuration - fine-grained control over auth behavior
+     const routeConfig = {
+          '/': {
+               requiresAuth: false,
+               redirectIfAuth: true,
+               redirectTarget: '/dashboard'
+          },
+          '/register': {
+               requiresAuth: false,
+               redirectIfAuth: true,     // Redirect to dashboard if already logged in
+               redirectTarget: '/dashboard'
+          },
+          '/dashboard': {
+               requiresAuth: true,       // Protected route
+               redirectIfAuth: false
+          },
+          '/upload': {
+               requiresAuth: true,       // Protected route
+               redirectIfAuth: false
+          },
+          '/unauthorized': {
+               requiresAuth: false,      // Public route
+               redirectIfAuth: false
+          },
+          '/redirect': {
+               requiresAuth: false,      // Public route
+               redirectIfAuth: false
+          },
+          '*': {
+               requiresAuth: false,      // Public route (404)
+               redirectIfAuth: false
           }
-     }
+     };
 
-     // TODO remove the error logs in unprotected routes
-     async function redirectIfAuthenticated(ctx, next, component = Dashboard) {
-          try {
-               const res = await fetch('http://localhost:3000/auth/status', {
-                    credentials: 'include'
-               });
+     page('/', () => {
+          currentRoute = '/';
+          current = Home;
+     });
 
-               if (res.status === 200) {
-                    current = component;
-               } else {
-                    next();
-               }
-          } catch (err) {
-               next();
-          }
-     }
+     page('/register', () => {
+          currentRoute = '/register';
+          current = Register;
+     });
+
+     page('/dashboard', () => {
+          currentRoute = '/dashboard';
+          current = Dashboard;
+     });
+
+     page('/upload', () => {
+          currentRoute = '/upload';
+          current = Upload;
+     });
+
+     page('/unauthorized', () => {
+          currentRoute = '/unauthorized';
+          current = Unauthorized;
+     });
+
+     page('/redirect', () => {
+          currentRoute = '/redirect';
+          current = Redirect;
+     });
+
+     page('*', () => {
+          currentRoute = '*';
+          current = NotFound;
+     });
 
      page.start();
 </script>
