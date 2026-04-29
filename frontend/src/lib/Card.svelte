@@ -5,10 +5,16 @@
           if (typeof title === "string") return title;
           return title?.name || title?.english || title?.romaji || "Unknown";
      }
+     
+     function cleanHTML(html) {
+       const temp = document.createElement('div');
+       temp.innerHTML = html;
+       return temp.textContent || temp.innerText || '';
+     }
 
      $: safeTitle = getTitle(item?.title);
      $: safeCoverImage = typeof item?.coverImage === "string" ? item.coverImage : item?.coverImage?.extraLarge || item?.coverImage?.large || "";
-     $: safeAverageScore = typeof item?.averageScore === "number" ? Math.round(item.averageScore * 10) / 10 : "N/A";
+     $: safeAverageScore = typeof item?.averageScore === "number" ? ((item.averageScore > 10) ? Math.round(item.averageScore) / 10 : Math.round(item.averageScore * 10) / 10 ) : "N/A";
      $: safeDescription = item?.description || "No description available.";
 </script>
 
@@ -29,7 +35,7 @@
                           <span class="genre">{genre.name || 'Unknown'}</span>
                     {/each}
                     {#if item.genres.length > 2}
-                         <span class="genre" style="font-family: 'Spock';">+{item.genres.length - 2}</span>
+                         <span class="genre">+{item.genres.length - 2}</span>
                     {/if}
                {:else}
                     <span class="genre unknown">Unknown</span>
@@ -37,11 +43,19 @@
           </div>
      </div>
 
-     <p class="description">{safeDescription}</p>
+     <p class="description">{cleanHTML(safeDescription)}</p>
 
 </div>
 
 <style>
+     span{
+          text-decoration: none;
+     }
+     
+     *{
+          font-family: "Switzer";
+     }
+     
      .item{
           height: 100%;
           width: 100%;
@@ -109,7 +123,7 @@
           text-shadow:none;
 
           text-decoration: underline;
-          font-family: 'Spock', sans-serif;
+          font-family: 'Switzer';
 
           white-space: nowrap;
           overflow: hidden;
@@ -130,7 +144,7 @@
 
           color: rgba(255, 255, 255, 0.6);
 
-          font-family: "Saygon";
+          font-family: "Author";
 		font-size: 0.8rem;
 
           text-align: left;
@@ -144,8 +158,7 @@
           justify-content: space-between;
 
           height: 100%;
-          min-width: 4rem;
-
+          min-width: 3rem;
           padding: 0.4rem;
           background: rgba(241, 231, 53, 0.12);
           border: 1px solid rgba(241, 231, 53, 0.4);
@@ -163,7 +176,7 @@
      }
 
      .score > span {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
 
           color: rgba(255, 255, 255, 0.95);
           text-shadow: rgba(241, 231, 53, 0.8) 0px 0px 20px;
@@ -193,7 +206,6 @@
           white-space: nowrap;
           text-overflow: ellipsis;
           text-align: center;
-          font-family: "Spock";
           font-size: 0.7rem;
 
           border-radius: 0.25rem;

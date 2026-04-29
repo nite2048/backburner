@@ -41,8 +41,7 @@
     background-color: var(--btn-color);
     color: var(--bg);
 
-    font-size: 0.8rem;
-    font-family: Spock;
+    font-size: 1rem;
 
     box-shadow: 0px 0px 40px 0px rgba(241, 231, 53, 0.12);
     border-radius: 0.4rem;

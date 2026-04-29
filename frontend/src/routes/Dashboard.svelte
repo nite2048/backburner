@@ -3,11 +3,6 @@
     import Card from "../lib/Card.svelte";
     import Error from "../lib/Error.svelte";
 
-
-    // Only for testing
-    // import * as data from "../lib/dashboardData.json";
-    // const items = data.default;
-
      const items =  fetch('http://localhost:3000/dashboard/getAll', {
           credentials: 'include'
      }).then(res => res.json());     

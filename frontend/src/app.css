@@ -1,21 +1,41 @@
 @font-face {
-    font-family: "Spock";
-    src:
-        url("../lib/fonts/Spock.woff2") format("woff2"),
-        url("../lib/fonts/Spock.woff") format("woff");
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
+  font-family: 'CabinetGrotesk';
+  src: url('../fonts/CabinetGrotesk-Variable.woff2') format('woff2'),
+       url('../fonts/CabinetGrotesk-Variable.woff') format('woff'),
+       url('../fonts/CabinetGrotesk-Variable.ttf') format('truetype');
+  font-weight: 100 700;
+  font-display: swap;
+  font-style: normal;
 }
 
 @font-face {
-    font-family: "Saygon";
-    src:
-        url("../lib/fonts/Saygon.woff2") format("woff2"),
-        url("../lib/fonts/Saygon.woff") format("woff");
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
+  font-family: 'Boska';
+  src: url('../fonts/Boska-Variable.woff2') format('woff2'),
+       url('../fonts/Boska-Variable.woff') format('woff'),
+       url('../fonts/Boska-Variable.ttf') format('truetype');
+  font-weight: 900 500;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Switzer';
+  src: url('../fonts/Switzer-Variable.woff2') format('woff2'),
+       url('../fonts/Switzer-Variable.woff') format('woff'),
+       url('../fonts/Switzer-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Author';
+  src: url('../fonts/Author-Variable.woff2') format('woff2'),
+       url('../fonts/Author-Variable.woff') format('woff'),
+       url('../fonts/Author-Variable.ttf') format('truetype');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
 }
 
 * {
@@ -24,7 +44,7 @@
     box-sizing: border-box;
     position: relative;
     border: none;
-    font-family: "Spock";
+    font-family: "CabinetGrotesk", sans-serif;
 }
 
 :root {
@@ -58,6 +78,8 @@ span {
 	text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
  	text-align: center;
 	font-size: 2rem;
+	font-family: "Switzer";
+	text-decoration: underline;
 }
 
 p{
