@@ -25,7 +25,7 @@
                const blob = await fetch(blobUrl).then(r => r.blob());
                const base64 = await blobToBase64(blob);
 
-               const response = await fetch("http://localhost:3000/dashboard/upload", {
+               const response = await fetch(import.meta.env.VITE_BACKEND_URL + '/dashboard/upload', {
                     method: "POST",
                     credentials: 'include',
                     headers: { "Content-Type": "application/json" },

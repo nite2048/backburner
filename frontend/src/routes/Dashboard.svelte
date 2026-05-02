@@ -3,7 +3,7 @@
     import Card from "../lib/Card.svelte";
     import Error from "../lib/Error.svelte";
 
-     const items =  fetch('http://localhost:3000/dashboard/getAll', {
+     const items =  fetch(import.meta.env.VITE_BACKEND_URL + '/dashboard/getAll', {
           credentials: 'include'
      }).then(res => res.json());     
 </script>

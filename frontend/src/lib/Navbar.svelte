@@ -145,7 +145,7 @@
       });
 
      function logout() {
-          fetch('http://localhost:3000/auth/logout', {
+          fetch(import.meta.env.VITE_BACKEND_URL + '/auth/logout', {
                method: 'GET',
                credentials: 'include'
           })

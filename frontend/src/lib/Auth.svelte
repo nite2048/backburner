@@ -18,7 +18,7 @@
           errorMessage = '';
 
           try {
-               const res = await fetch('http://localhost:3000/auth/status', {
+               const res = await fetch(import.meta.env.VITE_BACKEND_URL + '/auth/status', {
                     credentials: 'include',
                     headers: {
                          'Accept': 'application/json',
