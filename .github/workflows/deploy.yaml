@@ -17,7 +17,10 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: ./backend
-        run: npm ci
+        timeout-minutes: 5
+        run: |
+          npm cache clean --force
+          PRISMA_SKIP_POSTINSTALL_GENERATE=true npm ci --prefer-offline --no-audit --no-fund --loglevel=warn
 
       - name: Update backend environment variables
         working-directory: ./backend
