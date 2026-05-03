@@ -7,8 +7,8 @@ import { getPrismaUserByGithubAuth, getPrismaUserByGoogleAuth } from "../databas
 dotenv.config({quiet : true});
 const router = express.Router();
 
-const serverUrl = (process.env.DEVELOPMENT_MODE.toLowerCase() === "true") ? process.env.DEV_SERVER_URL : process.env.SERVER_URL
-const clientUrl = (process.env.DEVELOPMENT_MODE.toLowerCase() === "true") ? process.env.DEV_CLIENT_URL : process.env.CLIENT_URL
+const serverUrl = process.env.SERVER_URL;
+const clientUrl = process.env.CLIENT_URL;
 
 router.use('/status', validate)
 router.get('/status', async (_req, res) => {
@@ -18,7 +18,7 @@ router.get('/status', async (_req, res) => {
 
 router.get('/github', (_req, res) => {
 	const redirectUri = `${serverUrl}/auth/github/callback`;
-	const clientId = process.env.GITHUB_CLIENT_ID;
+	const clientId = process.env.GH_CLIENT_ID;
 	const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
 	res.redirect(url);
 });
@@ -29,7 +29,7 @@ router.get('/github/callback', async (req, res) => {
 	const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
           method: 'POST',
           headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code }),
+          body: JSON.stringify({ client_id: process.env.GH_CLIENT_ID, client_secret: process.env.GH_CLIENT_SECRET, code }),
 	})
 
      .then((res) => {

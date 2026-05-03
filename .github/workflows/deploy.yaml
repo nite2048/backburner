@@ -1,0 +1,112 @@
+name: deploy to azure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Configure
+        uses: actions/checkout@v4
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Update backend environment variables
+        working-directory: ./backend
+        run: |
+          echo "DEVELOPMENT_MODE=${{ vars.DEVELOPMENT_MODE }}" > .env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "GH_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}" >> .env
+          echo "GH_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "SHADOW_DATABASE_URL=${{ secrets.SHADOW_DATABASE_URL }}" >> .env
+          echo "TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" >> .env
+
+          SERVER_URL=$(curl -s ifconfig.me)
+          echo "SERVER_URL=http://${SERVER_URL}:3000" >> .env
+
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          echo "CLIENT_URL=https://${OWNER}.github.io/${REPO}" >> .env
+
+      - name: Generate Prisma client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: PM2 Deploy
+        working-directory: ./backend
+        run: |
+               pm2 stop all || true
+               pm2 start index.js
+               pm2 save
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Replace backend URL
+        working-directory: ./frontend
+        run: |
+          SERVER_URL=$(curl -s ifconfig.me)
+          find . -type f \( -name "*.ts" -o -name "*.js" -o -name "*.jsx" -o -name "*.tsx" -o -name "*.vue" -o -name "*.svelte" -o -name "*.html" -o -name "*.json" -o -name "*.env" \) \
+          -exec sed -i "s|import\.meta\.env\.VITE_BACKEND_URL|\"http://${SERVER_URL}:3000\"|g" {} +
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      # Upload dist as artifact so the next job can download it
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ./frontend/dist
+
+
+  deploy-gh-pages:
+    needs: deploy        # runs only after deploy-azure succeeds
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Download the dist built by the self-hosted runner
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: ./dist
+
+      - name: Fix static assets (Change "/asset/" to "./")
+        run: find ./ -type f -exec sed -i 's|/assets/|./|g' {} +
+
+      - name: Fix references (Change "./index" to "./assets/index")
+        run : find ./ -type f -exec sed -i 's|./index|./assets/index|g' {} +
+
+
+      # Upload the build files to GitHub Pages
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
